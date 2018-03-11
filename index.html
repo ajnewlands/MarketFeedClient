@@ -1,0 +1,142 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Socket.IO chat</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      header { height: 8vh; }
+      section { height: 80vh; overflow-y: scroll; }
+      footer { height: 8vh; }
+      input { text-align: right; }
+      body { font: 13px Helvetica, Arial; }
+    </style>
+  </head>
+  <body>
+    <header id="market-indicators"></header>
+    <section id="quote-lines"></section>
+    <hr>
+    <footer id="controls"></footer>
+    <link rel="stylesheet" href="https://unpkg.com/react-table@latest/react-table.css">
+    <script crossorigin src="https://unpkg.com/react@16/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@16/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/react-table@latest/react-table.js"></script>
+    <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      $(function () {
+        var quotes;
+        var markets = [];
+
+        var socket = io();
+        socket.on( 'disconnect', () => {
+          console.log('disconnected');
+        });
+        socket.on( 'quotelines', function( trade ) {
+          quotes = JSON.parse( trade );
+        });
+        socket.on( 'marketstatus', function( marketstat ) {
+          markets = JSON.parse( marketstat );
+        });
+
+        var ReactTable = window.ReactTable.default;
+
+        class simControls extends React.Component {
+          constructor( props ) {
+            super( props );
+            this.state = {};
+          }
+ 
+          render() {
+            var controls = [];
+   
+            controls.push( React.createElement( "button", { key: controls.length, style: { width: "10%" } }, "Pause" ) );
+            controls.push( React.createElement( "button", { key: controls.length, style: { width: "10%" } }, "Set Speed" ) );
+            controls.push( React.createElement( "input", { key: controls.length, value: "10", style: { width: "10%" } }, null ) );
+            controls.push( React.createElement( "button", { key: controls.length, style: { width: "10%", float: "right" } }, "Shutdown Sim" ) );
+
+            return controls;
+          }
+
+        }
+
+        class marketIndicators extends React.Component {
+          constructor( props ) {
+            super( props );
+            this.state = {};
+          }
+
+          tick() {
+            this.setState({
+            });
+          }
+
+          componentDidMount() {
+            this.timerID = setInterval(() => this.tick(), 250);
+          }
+
+          render () {
+            var buttons = [];
+            
+            for (let i = 0; i < markets.length; i++ )
+            {
+              var market_state = markets[i].state
+              var bgcolor =  ( market_state == "CLOSED" ? "#ff2e00" : market_state.substring(0,4) == "OPEN" ? "#57D500" : "#FFBF00" )
+              buttons.push ( React.createElement( "button", { disabled:true, title: market_state, key: markets[i].mic, style: { backgroundColor: bgcolor, width: "10%", color: "#000000" } }, markets[i].mic ) );
+            }
+            return buttons;
+          }
+   
+          componentWillUnmount() { clearInterval(this.timerID); }
+
+        }
+
+        class MyTable extends React.Component {
+          constructor(props) {
+            super(props);
+            this.state = {};
+          }
+
+          tick() {
+            this.setState({
+            });
+          }
+
+          componentDidMount() {
+            this.timerID = setInterval(() => this.tick(), 250);
+          }
+
+          componentWillUnmount() { clearInterval(this.timerID); }
+
+          render() {
+            return React.createElement('div', null, 
+              React.createElement( ReactTable, {
+              data: quotes,
+              columns: [
+                { Header: "Ticker", accessor: "ticker" },
+                { Header: "Bid", accessor: "bid" },
+                { Header: "Bid Size", accessor: "bidsz" },
+                { Header: "Ask", accessor: "ask" },
+                { Header: "Ask Size", accessor: "asksz" },
+                { Header: "Last", accessor: "last" },
+                { Header: "Last Size", accessor: "lastsz" },
+                { Header: "Status", accessor: "status", Cell: row => React.createElement( 
+                    "div",
+                    { style: { width: "100%", backgroundColor: row.value === "halt" ? "#ff2e00" : row.value === "ia" ? "#ffbf00" : "#57d500" } },
+                    row.value === "halt" ? "Halted" : row.value === "ia" ? "Intraday Auction" : "Normal" ,
+                  )
+                }
+              ],
+              showPagination: false,
+              className: "-striped -highlight",
+              minRows: 0
+            })
+          );
+         }
+        }
+        ReactDOM.render(React.createElement(marketIndicators, null), document.getElementById('market-indicators'));
+        ReactDOM.render(React.createElement(MyTable, null), document.getElementById('quote-lines'));
+        ReactDOM.render(React.createElement(simControls, null), document.getElementById('controls'));
+    });
+    </script>
+  </body>
+</html>
